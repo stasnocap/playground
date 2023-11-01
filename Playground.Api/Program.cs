@@ -7,8 +7,18 @@ using Playground.Data;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-builder.Services.AddFluentValidationAutoValidation();
-builder.Services.AddValidatorsFromAssemblyContaining<CreateToDoFormValidation>();
+
+builder.Services.AddCors(x =>
+{
+    x.AddPolicy("dev", policyBuilder => policyBuilder
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowAnyOrigin());
+});
+
+builder.Services
+    .AddFluentValidationAutoValidation()
+    .AddValidatorsFromAssemblyContaining<CreateToDoFormValidation>();
 
 builder.Services.AddDbContext<AppDbContext>(x =>
 {
@@ -18,5 +28,7 @@ builder.Services.AddDbContext<AppDbContext>(x =>
 var app = builder.Build();
 
 app.MapDefaultControllerRoute();
+
+app.UseCors("dev");
 
 app.Run();
