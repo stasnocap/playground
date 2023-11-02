@@ -3,6 +3,7 @@ using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using Playground.Api.Form.Validation;
 using Playground.Data;
+using Playground.Data.Seeders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,8 +28,19 @@ builder.Services.AddDbContext<AppDbContext>(x =>
 
 var app = builder.Build();
 
+Seed(app.Services);
+
 app.MapDefaultControllerRoute();
 
 app.UseCors("dev");
 
 app.Run();
+
+static void Seed(IServiceProvider serviceProvider)
+{
+    using var scope = serviceProvider.CreateScope();
+    var appDbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    
+    var todoSeeder = new TodoSeeder();
+    todoSeeder.Seed(appDbContext);
+}
