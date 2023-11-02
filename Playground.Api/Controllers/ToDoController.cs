@@ -75,13 +75,32 @@ public class ToDoController : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var toDo = await _ctx.ToDos.FirstOrDefaultAsync(x => x.Id == id);
-        
+
         if (toDo == null)
         {
             return NoContent();
         }
 
         _ctx.ToDos.Remove(toDo);
+
+        await _ctx.SaveChangesAsync();
+
+        return Ok();
+    }
+
+    [HttpGet("complete/{id}")]
+    public async Task<IActionResult> Complete(int id)
+    {
+        var toDo = await _ctx.ToDos.FirstOrDefaultAsync(x => x.Id == id);
+    
+        if (toDo == null)
+        {
+            return NoContent();
+        }
+
+        toDo.Completed = true;
+
+        _ctx.Update(toDo);
 
         await _ctx.SaveChangesAsync();
 

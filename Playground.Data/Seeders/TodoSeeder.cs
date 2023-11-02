@@ -14,7 +14,8 @@ public class TodoSeeder
             },
             new ToDo
             {
-                Text = "Memorize the fifty states and their capitals"
+                Text = "Memorize the fifty states and their capitals",
+                Completed = true,
             },
             new ToDo
             {
@@ -38,7 +39,8 @@ public class TodoSeeder
             },
             new ToDo
             {
-                Text = "Go see a Broadway production"
+                Text = "Go see a Broadway production",
+                Completed = true,
             },
             new ToDo
             {
