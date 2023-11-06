@@ -16,16 +16,23 @@ import {
     Chip,
     Pagination,
     Selection,
-    SortDescriptor
+    SortDescriptor, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure
 } from "@nextui-org/react";
 import {PlusIcon, ChevronDownIcon, SearchIcon} from "../icons";
-import {columns, statusOptions, Todo} from "./data";
-import {capitalize, getTodoCellValue, getTodoStatus} from "./utils";
+import {columns, statusOptions, Todo} from "./columns";
+import {getTodoCellValue, getTodoStatus} from "./utils";
 import {ChangeEvent, Key, useCallback, useMemo, useState} from "react";
+import {capitalize, maxBy} from "@/components/utils";
+import useSWR from "swr";
 
 const INITIAL_VISIBLE_COLUMNS = ["id", "text", "status"];
 
-export default function TodosTable({ todos }: { todos: Todo[] }) {
+const getTodos = () => fetch("http://localhost:5199/api/todos", { cache: "no-store"}).then(res => res.json())
+
+export default function TodosTable() {
+    const { data, error, isLoading, mutate } = useSWR('/api/todos', getTodos);
+
+    const todos = data as Todo[];
     const [filterValue, setFilterValue] = useState("");
     const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set([]));
     const [visibleColumns, setVisibleColumns] = useState<Selection>(new Set(INITIAL_VISIBLE_COLUMNS));
@@ -36,9 +43,8 @@ export default function TodosTable({ todos }: { todos: Todo[] }) {
         direction: "ascending",
     });
     const [page, setPage] = useState(1);
-
-    const pages = Math.ceil(todos.length / rowsPerPage);
-
+    const {isOpen, onOpen, onOpenChange} = useDisclosure();
+    
     const hasSearchFilter = Boolean(filterValue);
 
     const headerColumns = useMemo(() => {
@@ -48,6 +54,7 @@ export default function TodosTable({ todos }: { todos: Todo[] }) {
     }, [visibleColumns]);
 
     const filteredItems = useMemo(() => {
+        if (!todos) return [];
         let filteredTodos = [...todos];
 
         if (hasSearchFilter) {
@@ -57,10 +64,6 @@ export default function TodosTable({ todos }: { todos: Todo[] }) {
         }
         if (statusFilter !== "all" && Array.from(statusFilter).length !== statusOptions.length) {
             filteredTodos = filteredTodos.filter((todo) => {
-                console.log("statusFilter");
-                console.log(statusFilter);
-                console.log("Array.from(statusFilter)");
-                console.log(Array.from(statusFilter));
                 return Array.from(statusFilter).includes(getTodoStatus(todo.completed));
             });
         }
@@ -132,7 +135,7 @@ export default function TodosTable({ todos }: { todos: Todo[] }) {
                         }}
                         placeholder="Search by text..."
                         size="sm"
-                        startContent={<SearchIcon className="text-default-300" />}
+                        startContent={<SearchIcon className="text-default-300"/>}
                         value={filterValue}
                         variant="bordered"
                         onClear={() => setFilterValue("")}
@@ -142,7 +145,7 @@ export default function TodosTable({ todos }: { todos: Todo[] }) {
                         <Dropdown>
                             <DropdownTrigger className="hidden sm:flex">
                                 <Button
-                                    endContent={<ChevronDownIcon className="text-small" />}
+                                    endContent={<ChevronDownIcon className="text-small"/>}
                                     size="sm"
                                     variant="flat"
                                 >
@@ -167,7 +170,7 @@ export default function TodosTable({ todos }: { todos: Todo[] }) {
                         <Dropdown>
                             <DropdownTrigger className="hidden sm:flex">
                                 <Button
-                                    endContent={<ChevronDownIcon className="text-small" />}
+                                    endContent={<ChevronDownIcon className="text-small"/>}
                                     size="sm"
                                     variant="flat"
                                 >
@@ -189,17 +192,12 @@ export default function TodosTable({ todos }: { todos: Todo[] }) {
                                 ))}
                             </DropdownMenu>
                         </Dropdown>
-                        {/*<Button*/}
-                        {/*    className="bg-foreground text-background"*/}
-                        {/*    endContent={<PlusIcon />}*/}
-                        {/*    size="sm"*/}
-                        {/*>*/}
-                        {/*    Add New*/}
-                        {/*</Button>*/}
+                        <Button onPress={onOpen} size="sm" endContent={<PlusIcon></PlusIcon>}
+                                color="primary">Add</Button>
                     </div>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-default-400 text-small">Total {todos.length} todos</span>
+                    <span className="text-default-400 text-small">Total {!todos ? 0 : todos.length} todos</span>
                     <label className="flex items-center text-default-400 text-small">
                         Rows per page:
                         <select
@@ -220,9 +218,11 @@ export default function TodosTable({ todos }: { todos: Todo[] }) {
         visibleColumns,
         onSearchChange,
         onRowsPerPageChange,
-        todos.length,
+        !todos ? 0 : todos.length,
         hasSearchFilter,
     ]);
+
+    const pages = !todos ? 0 : Math.ceil(todos.length / rowsPerPage);
 
     const bottomContent = useMemo(() => {
         return (
@@ -262,45 +262,119 @@ export default function TodosTable({ todos }: { todos: Todo[] }) {
         [],
     );
 
+    if (error) return <div>failed to load</div>
+    if (isLoading) return <div>loading...</div>
+
     return (
-        <Table
-            isCompact
-            removeWrapper
-            aria-label="Example table with custom cells, pagination and sorting"
-            bottomContent={bottomContent}
-            bottomContentPlacement="outside"
-            checkboxesProps={{
-                classNames: {
-                    wrapper: "after:bg-foreground after:text-background text-background",
-                },
-            }}
-            classNames={classNames}
-            selectedKeys={selectedKeys}
-            selectionMode="single"
-            sortDescriptor={sortDescriptor}
-            topContent={topContent}
-            topContentPlacement="outside"
-            onSelectionChange={setSelectedKeys}
-            onSortChange={setSortDescriptor}
-        >
-            <TableHeader columns={headerColumns}>
-                {(column) => (
-                    <TableColumn
-                        key={column.uid}
-                        align={column.uid === "actions" ? "center" : "start"}
-                        allowsSorting={column.sortable}
-                    >
-                        {column.name}
-                    </TableColumn>
-                )}
-            </TableHeader>
-            <TableBody emptyContent={"No todoss found"} items={sortedItems}>
-                {(item) => (
-                    <TableRow key={item.id}>
-                        {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
-                    </TableRow>
-                )}
-            </TableBody>
-        </Table>
+        <>
+            <Table
+                isCompact
+                removeWrapper
+                aria-label="Example table with custom cells, pagination and sorting"
+                bottomContent={bottomContent}
+                bottomContentPlacement="outside"
+                checkboxesProps={{
+                    classNames: {
+                        wrapper: "after:bg-foreground after:text-background text-background",
+                    },
+                }}
+                classNames={classNames}
+                selectedKeys={selectedKeys}
+                selectionMode="single"
+                sortDescriptor={sortDescriptor}
+                topContent={topContent}
+                topContentPlacement="outside"
+                onSelectionChange={setSelectedKeys}
+                onSortChange={setSortDescriptor}
+            >
+                <TableHeader columns={headerColumns}>
+                    {(column) => (
+                        <TableColumn
+                            key={column.uid}
+                            align={column.uid === "actions" ? "center" : "start"}
+                            allowsSorting={column.sortable}
+                        >
+                            {column.name}
+                        </TableColumn>
+                    )}
+                </TableHeader>
+                <TableBody emptyContent={"No todoss found"} items={sortedItems}>
+                    {(item) => (
+                        <TableRow key={item.id}>
+                            {(columnKey) => <TableCell>{renderCell(item, columnKey)}</TableCell>}
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+            <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+                <ModalContent>
+                    {(onClose) => {
+                        const [isLoading, setIsLoading] = useState<boolean>(false)
+                        const [todo, setTodo] = useState<Todo>({text: "", completed: false} as Todo);
+
+                        const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+                            const {name, value} = e.target;
+
+                            setTodo(prevState => ({
+                                ...prevState,
+                                [name]: value
+                            }) as Todo);
+                        };
+
+                        const add = () => {
+                            setIsLoading(true);
+
+                            fetch('api/todos', {
+                                method: "post",
+                                headers: {
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify(todo)
+                            })
+                                .then(response => {
+                                    if (response.ok) {
+                                        todo.id = maxBy(todos, (x: Todo) => x.id).id + 1;
+
+                                        mutate([...todos, todo]);
+                                        
+                                        onClose();
+                                    }
+                                })
+                                .catch(x => {
+                                    console.error("something went wrong");
+                                })
+                                .finally(() => {
+                                    setIsLoading(false);
+                                });
+                        };
+
+                        return (
+                            <>
+                                <ModalHeader className="flex flex-col gap-1">Add</ModalHeader>
+                                <ModalBody>
+                                    <Input
+                                        autoFocus
+                                        label="Text"
+                                        placeholder="Enter your todo text"
+                                        variant="bordered"
+                                        name="text"
+                                        value={todo?.text}
+                                        onChange={handleChange}
+                                    />
+                                </ModalBody>
+                                <ModalFooter>
+                                    <Button color="danger" variant="light" onPress={onClose}>
+                                        Close
+                                    </Button>
+                                    <Button color="primary" onPress={add} disabled={isLoading}>
+                                        {isLoading ? "Loading" : "Confirm"}
+                                    </Button>
+                                </ModalFooter>
+                            </>
+                        )
+                    }}
+                </ModalContent>
+            </Modal>
+        </>
     );
 }
