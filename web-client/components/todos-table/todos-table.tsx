@@ -30,9 +30,9 @@ const INITIAL_VISIBLE_COLUMNS = ["id", "text", "status"];
 const getTodos = () => fetch("/api/todos", { cache: "no-store"}).then(res => res.json());
 
 export default function TodosTable() {
-    const { data, error, isLoading, mutate } = useSWR('/api/todos', getTodos);
+    const { data: todosData, error: todosError, isLoading: todosIsLoading, mutate: todosMutate } = useSWR('/api/todos', getTodos);
 
-    const todos = data as Todo[];
+    const todos = todosData ? todosData as Todo[] : [];
     const [filterValue, setFilterValue] = useState("");
     const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set([]));
     const [visibleColumns, setVisibleColumns] = useState<Selection>(new Set(INITIAL_VISIBLE_COLUMNS));
@@ -55,7 +55,7 @@ export default function TodosTable() {
     }, [visibleColumns]);
 
     const filteredItems = useMemo(() => {
-        if (!todos) return [];
+        if (!todos.length) return todos;
         let filteredTodos = [...todos];
 
         if (hasSearchFilter) {
@@ -200,7 +200,7 @@ export default function TodosTable() {
                     </div>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-default-400 text-small">Total {!todos ? 0 : todos.length} todos</span>
+                    <span className="text-default-400 text-small">Total todos.length todos</span>
                     <label className="flex items-center text-default-400 text-small">
                         Rows per page:
                         <select
@@ -221,12 +221,12 @@ export default function TodosTable() {
         visibleColumns,
         onSearchChange,
         onRowsPerPageChange,
-        !todos ? 0 : todos.length,
+        todos.length,
         hasSearchFilter,
         selectedKeys
     ]);
 
-    const pages = !todos ? 0 : Math.ceil(todos.length / rowsPerPage);
+    const pages = Math.ceil(todos.length / rowsPerPage);
 
     const bottomContent = useMemo(() => {
         return (
@@ -266,8 +266,8 @@ export default function TodosTable() {
         [],
     );
     
-    if (error) return <div>failed to load</div>
-    if (isLoading) return <div>loading...</div>
+    if (todosError) return <div>failed to load</div>
+    if (todosIsLoading) return <div>loading...</div>
 
     return (
         <>
@@ -339,9 +339,9 @@ export default function TodosTable() {
                                     if (response.status == 200) {
                                         todo.id = maxBy(todos, (x: Todo) => x.id).id + 1;
 
-                                        mutate([...todos, todo]);
-                                        
                                         onClose();
+                                        
+                                        return todosMutate([...todos, todo]);
                                     }
                                 })
                                 .catch(x => {
@@ -397,13 +397,12 @@ export default function TodosTable() {
                             })
                                 .then(response => {
                                     if (response.status == 200) {
-
-                                        const todosFiltered = todos.filter(x=>x.id !=id)
-                                        mutate(todosFiltered);
-
                                         selectedKeysSet.delete(id);
 
                                         onClose();
+                                        
+                                        const todosFiltered = todos.filter(x=>x.id !=id)
+                                        return todosMutate(todosFiltered);
                                     }
                                 })
                                 .catch(x => {
