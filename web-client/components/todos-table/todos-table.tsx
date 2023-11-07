@@ -200,7 +200,7 @@ export default function TodosTable() {
                     </div>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-default-400 text-small">Total todos.length todos</span>
+                    <span className="text-default-400 text-small">Total {todos.length} todos</span>
                     <label className="flex items-center text-default-400 text-small">
                         Rows per page:
                         <select
