@@ -152,7 +152,7 @@ export default function TodosTable() {
     };
     
     const topContent = useMemo(() => {
-        const isUDBtnsDisabled = !(selectedKeys as Set<string>).size;
+        const isRowSelected = !!(selectedKeys as Set<string>).size;
         
         return (
             <div className="flex flex-col gap-4">
@@ -222,10 +222,10 @@ export default function TodosTable() {
                                 ))}
                             </DropdownMenu>
                         </Dropdown>
-                        <Button onPress={complete} size="sm" color="success" isDisabled={completeBtnIsLoading}>{completeBtnIsLoading ? "Loading" : "Complete"}</Button>
+                        <Button onPress={complete} size="sm" color="success" isDisabled={completeBtnIsLoading || !isRowSelected}>{completeBtnIsLoading ? "Loading" : "Complete"}</Button>
                         <Button onPress={addModalOnOpen} size="sm" color="primary">Add</Button>
-                        <Button onPress={editModalOnOpen} size="sm" isDisabled={isUDBtnsDisabled} color="warning">Edit</Button>
-                        <Button onPress={deleteModalOnOpen} size="sm" isDisabled={isUDBtnsDisabled} color="danger">Delete</Button>
+                        <Button onPress={editModalOnOpen} size="sm" isDisabled={!isRowSelected} color="warning">Edit</Button>
+                        <Button onPress={deleteModalOnOpen} size="sm" isDisabled={!isRowSelected} color="danger">Delete</Button>
                     </div>
                 </div>
                 <div className="flex justify-between items-center">
