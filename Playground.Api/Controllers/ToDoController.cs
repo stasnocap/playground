@@ -63,6 +63,7 @@ public class ToDoController : ControllerBase
         }
 
         toDo.Text = updateToDoForm.Text;
+        toDo.Completed = updateToDoForm.Completed;
 
         _ctx.ToDos.Update(toDo);
 

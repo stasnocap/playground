@@ -11,6 +11,6 @@ export const columns = [
 ];
 
 export const statusOptions = [
-    {name: "Active", uid: "active"},
-    {name: "Completed", uid: "completed"},
+    {name: "Active", uid: "active", value: "false" },
+    {name: "Completed", uid: "completed", value: "true" },
 ];

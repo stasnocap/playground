@@ -16,13 +16,13 @@ import {
     Chip,
     Pagination,
     Selection,
-    SortDescriptor, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure
+    SortDescriptor, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure, Select, SelectItem
 } from "@nextui-org/react";
 import {PlusIcon, ChevronDownIcon, SearchIcon} from "../icons";
 import {columns, statusOptions, Todo} from "./columns";
 import {getTodoCellValue, getTodoStatus} from "./utils";
 import {ChangeEvent, Key, useCallback, useMemo, useState} from "react";
-import {capitalize, maxBy} from "@/components/utils";
+import {capitalize, maxBy, getSingleSelectedKey, handleObjectChange} from "@/components/utils";
 import useSWR from "swr";
 
 const INITIAL_VISIBLE_COLUMNS = ["id", "text", "status"];
@@ -45,6 +45,7 @@ export default function TodosTable() {
     const [page, setPage] = useState(1);
     const {isOpen: isAddModalOpen, onOpen: addModalOnOpen, onOpenChange: addModalOnOpenChange} = useDisclosure();
     const {isOpen: isDeleteModalOpen, onOpen: deleteModalOnOpen, onOpenChange: deleteModalOnOpenChange} = useDisclosure();
+    const {isOpen: isEditModalOpen, onOpen: editModalOnOpen, onOpenChange: editModalOnOpenChange} = useDisclosure();
     
     const hasSearchFilter = Boolean(filterValue);
 
@@ -124,7 +125,35 @@ export default function TodosTable() {
         }
     }, []);
 
+    const [completeBtnIsLoading, setCompleteBtnIsLoading] = useState<boolean>(false)
+    const complete = () => {
+        setCompleteBtnIsLoading(true);
+
+        const id = getSingleSelectedKey(selectedKeys);
+        if (!id) return;
+
+        fetch(`api/todos/complete/${id}`)
+            .then(response => {
+                if (response.status == 200) {
+                    
+                    const todoIndex = todos.findIndex(x=>x.id == id);
+                    
+                    todos[todoIndex].completed = true;
+                    
+                    return todosMutate(todos);
+                }
+            })
+            .catch(x => {
+                console.error("something went wrong");
+            })
+            .finally(() => {
+                setCompleteBtnIsLoading(false);
+            });
+    };
+    
     const topContent = useMemo(() => {
+        const isUDBtnsDisabled = !(selectedKeys as Set<string>).size;
+        
         return (
             <div className="flex flex-col gap-4">
                 <div className="flex justify-between gap-3 items-end">
@@ -193,10 +222,10 @@ export default function TodosTable() {
                                 ))}
                             </DropdownMenu>
                         </Dropdown>
-                        <Button onPress={addModalOnOpen} size="sm" endContent={<PlusIcon></PlusIcon>}
-                                color="primary">Add</Button>
-                        <Button onPress={deleteModalOnOpen} size="sm" isDisabled={!(selectedKeys as Set<string>).size}
-                                color="danger">Delete</Button>
+                        <Button onPress={complete} size="sm" color="success" isDisabled={completeBtnIsLoading}>{completeBtnIsLoading ? "Loading" : "Complete"}</Button>
+                        <Button onPress={addModalOnOpen} size="sm" color="primary">Add</Button>
+                        <Button onPress={editModalOnOpen} size="sm" isDisabled={isUDBtnsDisabled} color="warning">Edit</Button>
+                        <Button onPress={deleteModalOnOpen} size="sm" isDisabled={isUDBtnsDisabled} color="danger">Delete</Button>
                     </div>
                 </div>
                 <div className="flex justify-between items-center">
@@ -223,7 +252,8 @@ export default function TodosTable() {
         onRowsPerPageChange,
         todos.length,
         hasSearchFilter,
-        selectedKeys
+        selectedKeys,
+        completeBtnIsLoading
     ]);
 
     const pages = Math.ceil(todos.length / rowsPerPage);
@@ -316,15 +346,6 @@ export default function TodosTable() {
                         const [isLoading, setIsLoading] = useState<boolean>(false)
                         const [todo, setTodo] = useState<Todo>({text: "", completed: false} as Todo);
 
-                        const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-                            const {name, value} = e.target;
-
-                            setTodo(prevState => ({
-                                ...prevState,
-                                [name]: value
-                            }) as Todo);
-                        };
-
                         const add = () => {
                             setIsLoading(true);
 
@@ -363,14 +384,14 @@ export default function TodosTable() {
                                         variant="bordered"
                                         name="text"
                                         value={todo.text}
-                                        onChange={handleChange}
+                                        onChange={(e) => handleObjectChange(e, setTodo)}
                                     />
                                 </ModalBody>
                                 <ModalFooter>
                                     <Button color="danger" variant="light" onPress={onClose}>
                                         Close
                                     </Button>
-                                    <Button color="primary" onPress={add} disabled={isLoading}>
+                                    <Button color="primary" onPress={add} isDisabled={isLoading}>
                                         {isLoading ? "Loading" : "Confirm"}
                                     </Button>
                                 </ModalFooter>
@@ -387,16 +408,15 @@ export default function TodosTable() {
                         const remove = () => {
                             setIsLoading(true);
                             
-                            const selectedKeysSet = selectedKeys as Set<string>;
-                            if (selectedKeysSet.size != 1) return;
-
-                            const id = selectedKeysSet.values().next().value;
+                            const id = getSingleSelectedKey(selectedKeys);
+                            if (!id) return;
 
                             fetch(`api/todos/${id}`, {
                                 method: "delete",
                             })
                                 .then(response => {
                                     if (response.status == 200) {
+                                        const selectedKeysSet = selectedKeys as Set<string>;
                                         selectedKeysSet.delete(id);
 
                                         onClose();
@@ -423,7 +443,84 @@ export default function TodosTable() {
                                     <Button color="danger" variant="light" onPress={onClose}>
                                         Close
                                     </Button>
-                                    <Button color="primary" onPress={remove} disabled={isLoading}>
+                                    <Button color="primary" onPress={remove} isDisabled={isLoading}>
+                                        {isLoading ? "Loading" : "Confirm"}
+                                    </Button>
+                                </ModalFooter>
+                            </>
+                        )
+                    }}
+                </ModalContent>
+            </Modal>
+            <Modal isOpen={isEditModalOpen} onOpenChange={editModalOnOpenChange}>
+                <ModalContent>
+                    {(onClose) => {
+                        const id = getSingleSelectedKey(selectedKeys);
+                        if (!id) return;
+
+                        const [todo, setTodo] = useState<Todo>(todos.find(x=> x.id == id) as Todo);
+                        const [isLoading, setIsLoading] = useState<boolean>(false)
+
+                        const update = () => {
+                            setIsLoading(true);
+                            
+                            fetch('api/todos', {
+                                method: "put",
+                                headers: {
+                                    "Content-Type": "application/json"
+                                },
+                                body: JSON.stringify(todo)
+                            })
+                                .then(response => {
+                                    if (response.status == 200) {
+                                        todo.id = maxBy(todos, (x: Todo) => x.id).id + 1;
+
+                                        onClose();
+
+                                        return todosMutate([...todos, todo]);
+                                    }
+                                })
+                                .catch(x => {
+                                    console.error("something went wrong");
+                                })
+                                .finally(() => {
+                                    setIsLoading(false);
+                                });
+                        };
+
+                        return (
+                            <>
+                                <ModalHeader className="flex flex-col gap-1">Edit</ModalHeader>
+                                <ModalBody>
+                                    <Input
+                                        autoFocus
+                                        label="Text"
+                                        placeholder="Enter your todo text"
+                                        variant="bordered"
+                                        name="text"
+                                        value={todo.text}
+                                        onChange={(e) => handleObjectChange(e, setTodo)}
+                                    />
+                                    <Select
+                                        label="Status"
+                                        placeholder="Select a status"
+                                        variant="bordered"
+                                        defaultSelectedKeys={[todo.completed.toString()]}
+                                        name="completed"
+                                        onChange={(e) => handleObjectChange(e as any, setTodo)}
+                                    >
+                                        {statusOptions.map((status) => (
+                                            <SelectItem key={status.value} value={status.value}>
+                                                {status.name}
+                                            </SelectItem>
+                                        ))}
+                                    </Select>
+                                </ModalBody>
+                                <ModalFooter>
+                                    <Button color="danger" variant="light" onPress={onClose}>
+                                        Close
+                                    </Button>
+                                    <Button color="primary" onPress={update} isDisabled={isLoading}>
                                         {isLoading ? "Loading" : "Confirm"}
                                     </Button>
                                 </ModalFooter>
