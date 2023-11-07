@@ -27,7 +27,7 @@ import useSWR from "swr";
 
 const INITIAL_VISIBLE_COLUMNS = ["id", "text", "status"];
 
-const getTodos = () => fetch("http://localhost:5199/api/todos", { cache: "no-store"}).then(res => res.json())
+const getTodos = () => fetch("/api/todos", { cache: "no-store"}).then(res => res.json());
 
 export default function TodosTable() {
     const { data, error, isLoading, mutate } = useSWR('/api/todos', getTodos);
@@ -43,7 +43,8 @@ export default function TodosTable() {
         direction: "ascending",
     });
     const [page, setPage] = useState(1);
-    const {isOpen, onOpen, onOpenChange} = useDisclosure();
+    const {isOpen: isAddModalOpen, onOpen: addModalOnOpen, onOpenChange: addModalOnOpenChange} = useDisclosure();
+    const {isOpen: isDeleteModalOpen, onOpen: deleteModalOnOpen, onOpenChange: deleteModalOnOpenChange} = useDisclosure();
     
     const hasSearchFilter = Boolean(filterValue);
 
@@ -192,8 +193,10 @@ export default function TodosTable() {
                                 ))}
                             </DropdownMenu>
                         </Dropdown>
-                        <Button onPress={onOpen} size="sm" endContent={<PlusIcon></PlusIcon>}
+                        <Button onPress={addModalOnOpen} size="sm" endContent={<PlusIcon></PlusIcon>}
                                 color="primary">Add</Button>
+                        <Button onPress={deleteModalOnOpen} size="sm" isDisabled={!(selectedKeys as Set<string>).size}
+                                color="danger">Delete</Button>
                     </div>
                 </div>
                 <div className="flex justify-between items-center">
@@ -220,6 +223,7 @@ export default function TodosTable() {
         onRowsPerPageChange,
         !todos ? 0 : todos.length,
         hasSearchFilter,
+        selectedKeys
     ]);
 
     const pages = !todos ? 0 : Math.ceil(todos.length / rowsPerPage);
@@ -261,7 +265,7 @@ export default function TodosTable() {
         }),
         [],
     );
-
+    
     if (error) return <div>failed to load</div>
     if (isLoading) return <div>loading...</div>
 
@@ -306,7 +310,7 @@ export default function TodosTable() {
                     )}
                 </TableBody>
             </Table>
-            <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+            <Modal isOpen={isAddModalOpen} onOpenChange={addModalOnOpenChange}>
                 <ModalContent>
                     {(onClose) => {
                         const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -332,7 +336,7 @@ export default function TodosTable() {
                                 body: JSON.stringify(todo)
                             })
                                 .then(response => {
-                                    if (response.ok) {
+                                    if (response.status == 200) {
                                         todo.id = maxBy(todos, (x: Todo) => x.id).id + 1;
 
                                         mutate([...todos, todo]);
@@ -347,7 +351,7 @@ export default function TodosTable() {
                                     setIsLoading(false);
                                 });
                         };
-
+                        
                         return (
                             <>
                                 <ModalHeader className="flex flex-col gap-1">Add</ModalHeader>
@@ -358,7 +362,7 @@ export default function TodosTable() {
                                         placeholder="Enter your todo text"
                                         variant="bordered"
                                         name="text"
-                                        value={todo?.text}
+                                        value={todo.text}
                                         onChange={handleChange}
                                     />
                                 </ModalBody>
@@ -367,6 +371,60 @@ export default function TodosTable() {
                                         Close
                                     </Button>
                                     <Button color="primary" onPress={add} disabled={isLoading}>
+                                        {isLoading ? "Loading" : "Confirm"}
+                                    </Button>
+                                </ModalFooter>
+                            </>
+                        )
+                    }}
+                </ModalContent>
+            </Modal>
+            <Modal isOpen={isDeleteModalOpen} onOpenChange={deleteModalOnOpenChange}>
+                <ModalContent>
+                    {(onClose) => {
+                        const [isLoading, setIsLoading] = useState<boolean>(false)
+
+                        const remove = () => {
+                            setIsLoading(true);
+                            
+                            const selectedKeysSet = selectedKeys as Set<string>;
+                            if (selectedKeysSet.size != 1) return;
+
+                            const id = selectedKeysSet.values().next().value;
+
+                            fetch(`api/todos/${id}`, {
+                                method: "delete",
+                            })
+                                .then(response => {
+                                    if (response.status == 200) {
+
+                                        const todosFiltered = todos.filter(x=>x.id !=id)
+                                        mutate(todosFiltered);
+
+                                        selectedKeysSet.delete(id);
+
+                                        onClose();
+                                    }
+                                })
+                                .catch(x => {
+                                    console.error("something went wrong");
+                                })
+                                .finally(() => {
+                                    setIsLoading(false);
+                                });
+                        };
+
+                        return (
+                            <>
+                                <ModalHeader className="flex flex-col gap-1">Delete</ModalHeader>
+                                <ModalBody>
+                                    Are you sure?
+                                </ModalBody>
+                                <ModalFooter>
+                                    <Button color="danger" variant="light" onPress={onClose}>
+                                        Close
+                                    </Button>
+                                    <Button color="primary" onPress={remove} disabled={isLoading}>
                                         {isLoading ? "Loading" : "Confirm"}
                                     </Button>
                                 </ModalFooter>
