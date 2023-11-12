@@ -1,0 +1,15 @@
+﻿@page
+@model Playground.Api.Pages.Account.Login
+
+@{
+    Layout = null;
+}
+
+<form method="post">
+    <input type="hidden" asp-for="Form.ReturnUrl" value="@Model.Form.ReturnUrl">
+    <input asp-for="Form.UserName">
+    <span asp-validation-for="Form.UserName"></span>
+    <input asp-for="Form.Password">
+    <span asp-validation-for="Form.Password"></span>
+    <button type="submit">Sign in</button>
+</form>
