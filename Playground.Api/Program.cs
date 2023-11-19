@@ -1,11 +1,8 @@
 using Duende.IdentityServer.Models;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Playground.Api;
 using Playground.Api.Form.Validation;
 using Playground.Data;
 using Playground.Data.Seeders;
@@ -51,10 +48,7 @@ app.Run();
 
 void AddIdentity(IServiceCollection services)
 {
-    services.AddDbContext<UserDbContext>(options =>
-    {
-        options.UseInMemoryDatabase("Playground.IdentityDatabase");
-    });
+    services.AddDbContext<UserDbContext>(options => { options.UseInMemoryDatabase("Playground.IdentityDatabase"); });
 
     var isDevelopment = builder.Environment.IsDevelopment();
     services.AddIdentity<IdentityUser, IdentityRole>(options =>
@@ -77,10 +71,13 @@ void AddIdentity(IServiceCollection services)
 
     services.ConfigureApplicationCookie(configure =>
     {
-        configure.LoginPath = "/Account/Login";
+        configure.Cookie.SecurePolicy = CookieSecurePolicy.Always;
     });
 
-    var identityServerBuilder = services.AddIdentityServer();
+    var identityServerBuilder = services.AddIdentityServer(options =>
+    {
+        options.Authentication.CheckSessionCookieSameSiteMode = SameSiteMode.Strict;
+    });
 
     identityServerBuilder.AddAspNetIdentity<IdentityUser>();
 
@@ -98,11 +95,11 @@ void AddIdentity(IServiceCollection services)
             {
                 ClientId = "web-client",
                 AllowedGrantTypes = GrantTypes.Code,
-                
+
                 RedirectUris = new[] { "http://localhost:3000" },
                 PostLogoutRedirectUris = new[] { "http://localhost:3000" },
                 AllowedCorsOrigins = new[] { "http://localhost:3000" },
-                
+
                 RequirePkce = true,
                 AllowAccessTokensViaBrowser = true,
                 RequireConsent = false,
