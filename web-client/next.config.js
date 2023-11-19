@@ -3,7 +3,7 @@ const nextConfig = {
     async rewrites() {
         return [
             {
-                source: '/api/:path*',
+                source: '/be/:path*',
                 destination: 'http://localhost:5199/api/:path*'
             }
         ]

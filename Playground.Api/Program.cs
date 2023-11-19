@@ -1,3 +1,4 @@
+using Duende.IdentityServer;
 using Duende.IdentityServer.Models;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -69,10 +70,7 @@ void AddIdentity(IServiceCollection services)
         .AddEntityFrameworkStores<UserDbContext>()
         .AddDefaultTokenProviders();
 
-    services.ConfigureApplicationCookie(configure =>
-    {
-        configure.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-    });
+    services.ConfigureApplicationCookie(configure => { configure.Cookie.SecurePolicy = CookieSecurePolicy.Always; });
 
     var identityServerBuilder = services.AddIdentityServer(options =>
     {
@@ -87,6 +85,7 @@ void AddIdentity(IServiceCollection services)
         {
             new IdentityResources.OpenId(),
             new IdentityResources.Profile(),
+            new IdentityResources.Email(),
         });
 
         identityServerBuilder.AddInMemoryClients(new[]
@@ -95,8 +94,14 @@ void AddIdentity(IServiceCollection services)
             {
                 ClientId = "web-client",
                 AllowedGrantTypes = GrantTypes.Code,
+                AllowedScopes =
+                {
+                    IdentityServerConstants.StandardScopes.OpenId, 
+                    IdentityServerConstants.StandardScopes.Profile,
+                    IdentityServerConstants.StandardScopes.Email
+                },
 
-                RedirectUris = new[] { "http://localhost:3000" },
+                RedirectUris = new[] { "http://localhost:3000/api/auth/callback/duende-identityserver6" },
                 PostLogoutRedirectUris = new[] { "http://localhost:3000" },
                 AllowedCorsOrigins = new[] { "http://localhost:3000" },
 

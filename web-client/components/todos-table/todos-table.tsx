@@ -27,10 +27,10 @@ import useSWR from "swr";
 
 const INITIAL_VISIBLE_COLUMNS = ["id", "text", "status"];
 
-const getTodos = () => fetch("/api/todos", { cache: "no-store"}).then(res => res.json());
+const getTodos = () => fetch("/be/todos", { cache: "no-store"}).then(res => res.json());
 
 export default function TodosTable() {
-    const { data: todosData, error: todosError, isLoading: todosIsLoading, mutate: todosMutate } = useSWR('/api/todos', getTodos);
+    const { data: todosData, error: todosError, isLoading: todosIsLoading, mutate: todosMutate } = useSWR('/be/todos', getTodos);
 
     const todos = todosData ? todosData as Todo[] : [];
     const [filterValue, setFilterValue] = useState("");
@@ -132,7 +132,7 @@ export default function TodosTable() {
         const id = getSingleSelectedKey(selectedKeys);
         if (!id) return;
 
-        fetch(`api/todos/complete/${id}`)
+        fetch(`be/todos/complete/${id}`)
             .then(response => {
                 if (response.status == 200) {
                     
@@ -349,7 +349,7 @@ export default function TodosTable() {
                         const add = () => {
                             setIsLoading(true);
 
-                            fetch('api/todos', {
+                            fetch('be/todos', {
                                 method: "post",
                                 headers: {
                                     "Content-Type": "application/json"
@@ -411,7 +411,7 @@ export default function TodosTable() {
                             const id = getSingleSelectedKey(selectedKeys);
                             if (!id) return;
 
-                            fetch(`api/todos/${id}`, {
+                            fetch(`be/todos/${id}`, {
                                 method: "delete",
                             })
                                 .then(response => {
@@ -464,7 +464,7 @@ export default function TodosTable() {
                         const update = () => {
                             setIsLoading(true);
                             
-                            fetch('api/todos', {
+                            fetch('be/todos', {
                                 method: "put",
                                 headers: {
                                     "Content-Type": "application/json"
