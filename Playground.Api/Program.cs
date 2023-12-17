@@ -4,6 +4,7 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Playground.Api;
 using Playground.Api.Form.Validation;
 using Playground.Data;
 using Playground.Data.Seeders;
@@ -78,6 +79,8 @@ void AddIdentity(IServiceCollection services)
     });
 
     identityServerBuilder.AddAspNetIdentity<IdentityUser>();
+
+    identityServerBuilder.AddProfileService<TestProfileService>();
 
     if (isDevelopment)
     {

@@ -41,9 +41,7 @@ export default async function RootLayout({children}: { children: React.ReactNode
             <div className="relative flex flex-col h-screen">
                 <Navbar/>
                 <main className="container mx-auto max-w-7xl pt-16 px-6 flex-grow">
-							<span>
-								Privet
-							</span>
+                    {session?.user?.name}
                     <SessionProvider session={session}>
                         {children}
                     </SessionProvider>
